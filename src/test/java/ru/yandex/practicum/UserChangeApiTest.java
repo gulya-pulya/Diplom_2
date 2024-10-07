@@ -4,6 +4,7 @@ import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.ValidatableResponse;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.yandex.practicum.dto.request.UserCreateRequest;
@@ -11,7 +12,6 @@ import ru.yandex.practicum.dto.request.UserLoginRequest;
 import ru.yandex.practicum.dto.response.UserLoginResponse;
 import ru.yandex.practicum.util.UserUtils;
 
-import java.math.BigInteger;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -19,43 +19,38 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 public class UserChangeApiTest {
 
+    private String email = UUID.randomUUID() + "@ya.ru";
+    private String password = "Qwerty231";
+
     @Before
     public void setUp() {
         RestAssured.baseURI = "https://stellarburgers.nomoreparties.site";
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.createUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Change authorized user should return ok")
     public void changeUserShouldReturnOk() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
 
-        UserUtils.createUser(userCreateRequest);
         UserLoginResponse userLoginResponse = UserUtils.loginUser(userLoginRequest);
 
-        String newEmail = UUID.randomUUID() + "@ya.ru";
+        email = UUID.randomUUID() + "@ya.ru";
         String newName = UUID.randomUUID().toString();
-        String newPassword = UUID.randomUUID().toString();
+        password = UUID.randomUUID().toString();
 
-        UserCreateRequest changeUserRequest = new UserCreateRequest(newEmail, newPassword, newName);
+        UserCreateRequest changeUserRequest = new UserCreateRequest(email, password, newName);
         ValidatableResponse response = changeUserDataWithAuthorization(userLoginResponse, changeUserRequest);
 
         checkSuccessfulUserChangeResponseFieldsAndStatus(response, changeUserRequest);
-
-        UserUtils.deleteUser(changeUserRequest);
     }
 
     @Test
     @DisplayName("Change authorized user should return failed if user with new email already exists")
     public void changeUserShouldReturnErrorIfUserWithNewEmailAlreadyExists() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
 
-        UserUtils.createUser(userCreateRequest);
         UserLoginResponse userLoginResponse = UserUtils.loginUser(userLoginRequest);
 
         String newEmail = UUID.randomUUID() + "@ya.ru";
@@ -70,19 +65,12 @@ public class UserChangeApiTest {
 
         checkFailedUserChangedResponseFieldsAndStatus(response, 403, "User with such email already exists");
 
-        UserUtils.deleteUser(userCreateRequest);
         UserUtils.deleteUser(newUserCreateRequest);
     }
 
     @Test
     @DisplayName("Change not authorized user should return error")
     public void changeUserShouldReturnError() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
-
-        UserUtils.createUser(userCreateRequest);
-
         String newEmail = UUID.randomUUID() + "@ya.ru";
         String newName = UUID.randomUUID().toString();
         String newPassword = UUID.randomUUID().toString();
@@ -91,8 +79,6 @@ public class UserChangeApiTest {
         ValidatableResponse response = changeUserDataWithoutAuthorization(changeUserRequest);
 
         checkFailedUserChangedResponseFieldsAndStatus(response, 401, "You should be authorised");
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Step("Check response fields and status of successfully changed user")
@@ -136,5 +122,11 @@ public class UserChangeApiTest {
                 .when()
                 .patch("/api/auth/user")
                 .then();
+    }
+
+    @After
+    public void clean() {
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.deleteUser(userCreateRequest);
     }
 }

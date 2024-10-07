@@ -2,7 +2,6 @@ package ru.yandex.practicum.util;
 
 import io.qameta.allure.Step;
 import ru.yandex.practicum.dto.response.GetIngredientsResponse;
-import ru.yandex.practicum.dto.response.UserLoginResponse;
 
 import static io.restassured.RestAssured.given;
 

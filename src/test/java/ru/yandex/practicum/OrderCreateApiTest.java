@@ -5,6 +5,7 @@ import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.ValidatableResponse;
 import org.hamcrest.CoreMatchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.yandex.practicum.dto.request.OrderCreateRequest;
@@ -25,19 +26,20 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 public class OrderCreateApiTest {
 
+    private final String email = UUID.randomUUID() + "@ya.ru";
+    private final String password = "Qwerty231";
+
     @Before
     public void setUp() {
         RestAssured.baseURI = "https://stellarburgers.nomoreparties.site";
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.createUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Create order with authorized user should return ok")
     public void createOrderWithAuthorizedUserShouldReturnOk() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
-        UserUtils.createUser(userCreateRequest);
         UserLoginResponse userLoginResponse = UserUtils.loginUser(userLoginRequest);
 
         GetIngredientsResponse availableIngredients = IngredientUtils.getAvailableIngredients();
@@ -49,18 +51,11 @@ public class OrderCreateApiTest {
 
         ValidatableResponse response = createOrderWithAuthorized(userLoginResponse, orderCreateRequest);
         checkSuccessfulOrderCreateResponseFieldsAndStatus(response);
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Create order with not authorized user should return ok")
     public void createOrderWithNotAuthorizedUserShouldReturnOk() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
-        UserUtils.createUser(userCreateRequest);
-
         GetIngredientsResponse availableIngredients = IngredientUtils.getAvailableIngredients();
         List<String> ingredientsHash = availableIngredients.getData().stream()
                 .map(GetIngredientsResponse.Ingredient::getId)
@@ -70,44 +65,30 @@ public class OrderCreateApiTest {
 
         ValidatableResponse response = createOrderWithoutAuthorized(orderCreateRequest);
         checkSuccessfulOrderCreateResponseFieldsAndStatus(response);
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Create order should return error if ingredients list is empty")
     public void createOrderShouldReturnErrorIfIngredientsListIsEmpty() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
-        UserUtils.createUser(userCreateRequest);
         UserLoginResponse userLoginResponse = UserUtils.loginUser(userLoginRequest);
 
         OrderCreateRequest orderCreateRequest = new OrderCreateRequest(Collections.emptyList());
 
         ValidatableResponse response = createOrderWithAuthorized(userLoginResponse, orderCreateRequest);
         checkFailedOrderCreateResponseFieldsAndStatus(response, 400, "Ingredient ids must be provided");
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Create order should return error if ingredient not found")
     public void createOrderShouldReturnErrorIfIngredientNotFound() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
-        UserUtils.createUser(userCreateRequest);
         UserLoginResponse userLoginResponse = UserUtils.loginUser(userLoginRequest);
 
         OrderCreateRequest orderCreateRequest = new OrderCreateRequest(List.of(UUID.randomUUID().toString()));
 
         ValidatableResponse response = createOrderWithAuthorized(userLoginResponse, orderCreateRequest);
         checkFailedOrderCreateResponseStatus(response, 500);
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Step("Create order with authorized")
@@ -157,5 +138,11 @@ public class OrderCreateApiTest {
                 .body("message", equalTo(message))
                 .and()
                 .statusCode(code);
+    }
+
+    @After
+    public void clean() {
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.deleteUser(userCreateRequest);
     }
 }

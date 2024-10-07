@@ -1,7 +1,6 @@
 package ru.yandex.practicum.util;
 
 import io.qameta.allure.Step;
-import io.restassured.http.Header;
 import io.restassured.response.ValidatableResponse;
 import ru.yandex.practicum.dto.request.UserCreateRequest;
 import ru.yandex.practicum.dto.request.UserLoginRequest;

@@ -5,6 +5,7 @@ import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.ValidatableResponse;
 import org.hamcrest.CoreMatchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.yandex.practicum.dto.request.UserCreateRequest;
@@ -18,42 +19,33 @@ import static org.hamcrest.CoreMatchers.equalTo;
 
 public class UserLoginApiTest {
 
+    private final String email = UUID.randomUUID() + "@ya.ru";
+    private final String password = "Qwerty231";
+
     @Before
     public void setUp() {
         RestAssured.baseURI = "https://stellarburgers.nomoreparties.site";
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.createUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Login user should return ok")
     public void loginUserShouldReturnOk() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, password);
-
-        UserUtils.createUser(userCreateRequest);
 
         ValidatableResponse response = tryToLogin(userLoginRequest);
         checkSuccessfulUserLoginResponseFieldsAndStatus(response);
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Test
     @DisplayName("Login user should return error if user password don't match")
     public void loginUserShouldReturnErrorIfUserPasswordDontMatch() {
-        String email = UUID.randomUUID() + "@ya.ru";
-        String password = "Qwerty231";
-        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
         UserLoginRequest userLoginRequest = new UserLoginRequest(email, "wrongPassword");
-
-        UserUtils.createUser(userCreateRequest);
 
         ValidatableResponse response = tryToLogin(userLoginRequest);
 
         checkFailedUserLoginResponseFieldsAndStatus(response, 401, "email or password are incorrect");
-
-        UserUtils.deleteUser(userCreateRequest);
     }
 
     @Test
@@ -96,5 +88,11 @@ public class UserLoginApiTest {
                 .body("message", equalTo(message))
                 .and()
                 .statusCode(code);
+    }
+
+    @After
+    public void clean() {
+        UserCreateRequest userCreateRequest = new UserCreateRequest(email, password, "test");
+        UserUtils.deleteUser(userCreateRequest);
     }
 }
